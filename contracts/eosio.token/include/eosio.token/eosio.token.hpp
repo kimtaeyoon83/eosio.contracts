@@ -97,7 +97,9 @@ namespace eosio {
           *
           * More information can be read [here](https://github.com/EOSIO/eosio.contracts/issues/62)
           * and [here](https://github.com/EOSIO/eosio.contracts/issues/61).
-          * transfer하는 과정에서 램에 대한 사용처리, 미리 0 값을 생성하여 램 지불에 대해서 처리의 목적
+          * transfer하는 과정에서 account 테이블에 데이터를 기록하기 위해서 램을 사용하는데,
+          * 램의 사용량을 미리 지불하기 위해서 사용함 
+          * 미리 balance값을 0으로 생성함
           */
          [[eosio::action]]
          void open( const name& owner, const symbol& symbol, const name& ram_payer );
