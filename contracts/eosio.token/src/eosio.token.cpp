@@ -90,7 +90,7 @@ void token::transfer( const name&    from,
     const auto& st = statstable.get( sym.raw() );
 
     //notify - https://steemit.com/eos/@raindays/contract
-    //해당 이름의 contract에 동일하게 transfer를 구현하면 코드가 수신됨 
+    //해당 이름의 contract에 동일하게 transfer를 구현하면 action이 전달 됨 
     require_recipient( from );
     require_recipient( to );
 
