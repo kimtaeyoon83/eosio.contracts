@@ -86,6 +86,8 @@ void token::transfer( const name&    from,
     stats statstable( get_self(), sym.raw() );
     const auto& st = statstable.get( sym.raw() );
 
+    //notify ?? 확인 필요
+  //해당 이름의 contract에 동일하게 transfer를 구현하면 코드가 수신됨 
     require_recipient( from );
     require_recipient( to );
 
@@ -93,7 +95,9 @@ void token::transfer( const name&    from,
     check( quantity.amount > 0, "must transfer positive quantity" );
     check( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
     check( memo.size() <= 256, "memo has more than 256 bytes" );
-
+    
+  //Verifies that "to" has auth. - https://eosio.github.io/eosio.cdt/1.6.0/group__action.html#function-hasauth
+  //ram 지불자를 정하기 위해 
     auto payer = has_auth( to ) ? to : from;
 
     sub_balance( from, quantity );
@@ -120,6 +124,7 @@ void token::add_balance( const name& owner, const asset& value, const name& ram_
         a.balance = value;
       });
    } else {
+     //기존의 ram payer
       to_acnts.modify( to, same_payer, [&]( auto& a ) {
         a.balance += value;
       });
