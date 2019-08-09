@@ -2,6 +2,7 @@
 
 namespace eosio {
 
+/* cleos push action eosio.token create '[ "eosio", "1000000000.0000 SYS"]' -p eosio.token@active */
 void token::create( const name&   issuer,
                     const asset&  maximum_supply )
 {
@@ -23,7 +24,7 @@ void token::create( const name&   issuer,
     });
 }
 
-
+/* cleos push action eosio.token issue '[ "raon", "100000.0000 SYS", "memo" ]' -p eosio@active */
 void token::issue( const name& to, const asset& quantity, const string& memo )
 {
     auto sym = quantity.symbol;
@@ -50,6 +51,7 @@ void token::issue( const name& to, const asset& quantity, const string& memo )
     add_balance( st.issuer, quantity, st.issuer );
 }
 
+/* cleos push action eosio.token retire '[ "10000.0000 SYS", "memo" ]' -p eosio@active */
 void token::retire( const asset& quantity, const string& memo )
 {
     auto sym = quantity.symbol;
@@ -74,6 +76,7 @@ void token::retire( const asset& quantity, const string& memo )
     sub_balance( st.issuer, quantity );
 }
 
+/* cleos push action eosio.token transfer '[ "raon", "raonissueraa", "1.0000 SYS", "m" ]' -p raon@active */
 void token::transfer( const name&    from,
                       const name&    to,
                       const asset&   quantity,
@@ -86,8 +89,8 @@ void token::transfer( const name&    from,
     stats statstable( get_self(), sym.raw() );
     const auto& st = statstable.get( sym.raw() );
 
-    //notify ?? 확인 필요
-  //해당 이름의 contract에 동일하게 transfer를 구현하면 코드가 수신됨 
+    //notify - https://steemit.com/eos/@raindays/contract
+    //해당 이름의 contract에 동일하게 transfer를 구현하면 코드가 수신됨 
     require_recipient( from );
     require_recipient( to );
 
@@ -96,8 +99,8 @@ void token::transfer( const name&    from,
     check( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
     check( memo.size() <= 256, "memo has more than 256 bytes" );
     
-  //Verifies that "to" has auth. - https://eosio.github.io/eosio.cdt/1.6.0/group__action.html#function-hasauth
-  //ram 지불자를 정하기 위해 
+    //Verifies that "to" has auth. - https://eosio.github.io/eosio.cdt/1.6.0/group__action.html#function-hasauth
+    //ram 지불자를 정하기 위해 
     auto payer = has_auth( to ) ? to : from;
 
     sub_balance( from, quantity );
