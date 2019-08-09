@@ -96,6 +96,7 @@ namespace eosio {
           *
           * More information can be read [here](https://github.com/EOSIO/eosio.contracts/issues/62)
           * and [here](https://github.com/EOSIO/eosio.contracts/issues/61).
+          * transfer하는 과정에서 램에 대한 사용처리, 미리 0 값을 생성하여 램 지불에 대해서 처리의 목적
           */
          [[eosio::action]]
          void open( const name& owner, const symbol& symbol, const name& ram_payer );
@@ -111,6 +112,7 @@ namespace eosio {
           *
           * @pre The pair of owner plus symbol has to exist otherwise no action is executed,
           * @pre If the pair of owner plus symbol exists, the balance has to be zero.
+          * 0 값에 대해서 램 사용을 복구의 목적으로 사용
           */
          [[eosio::action]]
          void close( const name& owner, const symbol& symbol );
@@ -139,6 +141,7 @@ namespace eosio {
           * @param token_contract_account - the token creator account,
           * @param owner - the account for which the token balance is returned,
           * @param sym_code - the token for which the balance is returned.
+          * cleos -get currency balance
           */
          static asset get_balance( const name& token_contract_account, const name& owner, const symbol_code& sym_code )
          {
