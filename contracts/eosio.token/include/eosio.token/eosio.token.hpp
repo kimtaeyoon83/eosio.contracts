@@ -1,5 +1,6 @@
 #pragma once
 
+/*https://github.com/EOSIO/eosio.cdt/blob/master/libraries/eosiolib/asset.hpp*/
 #include <eosio/asset.hpp>
 #include <eosio/eosio.hpp>
 
