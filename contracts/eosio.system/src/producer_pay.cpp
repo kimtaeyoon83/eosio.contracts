@@ -7,21 +7,26 @@ namespace eosiosystem {
    using eosio::microseconds;
    using eosio::token;
 
+   //ignore항목 확인 필요 - 대략적으로 구조 일치 여부 확인하지 않는다는 말 같음
    void system_contract::onblock( ignore<block_header> ) {
       using namespace eosio;
 
       require_auth(get_self());
-
+      
       block_timestamp timestamp;
       name producer;
+      
+      //tykim: _ds는 요청 데이터인데 timestamp, producer 순으로 데이터 추출 , 위에 ignore<>과 관련 있음 ignore를 사용했기 때문에 데이터 추출 가능 
       _ds >> timestamp >> producer;
 
       // _gstate2.last_block_num is not used anywhere in the system contract code anymore.
       // Although this field is deprecated, we will continue updating it for now until the last_block_num field
       // is eventually completely removed, at which point this line can be removed.
+      //tykim: *deprecated* 사용안함 
       _gstate2.last_block_num = timestamp;
 
       /** until activated stake crosses this threshold no new rewards are paid */
+      //tykim:  _gstate.total_activated_stake += voter->staked; 투표자의 총 stake 량 
       if( _gstate.total_activated_stake < min_activated_stake )
          return;
 
@@ -42,9 +47,12 @@ namespace eosiosystem {
       }
 
       /// only update block producers once every minute, block_timestamp is in half seconds
+      //tykim: 1분 마다 
       if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
+         //tykim: 1분 마다 bp를 선택함 
          update_elected_producers( timestamp );
-
+           
+         //blocks_per_day = 24 * 3600 * 2 이것보다 크면 24시간 경과
          if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
             name_bid_table bids(get_self(), get_self().value);
             auto idx = bids.get_index<"highbid"_n>();
