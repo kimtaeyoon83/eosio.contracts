@@ -7,6 +7,9 @@ namespace eosiosystem {
    using eosio::microseconds;
    using eosio::token;
 
+   
+   //https://github.com/EOSIO/eos/blob/eb88d033c0abbc481b8a481485ef4218cdaa033a/libraries/chain/controller.cpp
+   //node에서 블록 서명시 이벤트 발생 
    //ignore항목 확인 필요 - 대략적으로 구조 일치 여부 확인하지 않는다는 말 같음
    void system_contract::onblock( ignore<block_header> ) {
       using namespace eosio;
@@ -14,6 +17,8 @@ namespace eosiosystem {
       require_auth(get_self());
       
       block_timestamp timestamp;
+      
+      //현재 블록을 생성한 bp 계정 정보 
       name producer;
       
       //tykim: _ds는 요청 데이터인데 timestamp, producer 순으로 데이터 추출 , 위에 ignore<>과 관련 있음 ignore를 사용했기 때문에 데이터 추출 가능 
@@ -40,6 +45,7 @@ namespace eosiosystem {
        */
       auto prod = _producers.find( producer.value );
       if ( prod != _producers.end() ) {
+         //unpaid 블록 갯수 추가 
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, same_payer, [&](auto& p ) {
                p.unpaid_blocks++;
@@ -53,6 +59,7 @@ namespace eosiosystem {
          update_elected_producers( timestamp );
            
          //blocks_per_day = 24 * 3600 * 2 이것보다 크면 24시간 경과
+         //name 경매 관련 24시간 경과 체크 코드 
          if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
             name_bid_table bids(get_self(), get_self().value);
             auto idx = bids.get_index<"highbid"_n>();
@@ -64,6 +71,7 @@ namespace eosiosystem {
                 (current_time_point() - _gstate.thresh_activated_stake_time) > microseconds(14 * useconds_per_day)
             ) {
                _gstate.last_name_close = timestamp;
+               //channel_namebid_to_rex - rex 관련 코드 확인 필요 
                channel_namebid_to_rex( highest->high_bid );
                idx.modify( highest, same_payer, [&]( auto& b ){
                   b.high_bid = -b.high_bid;
@@ -73,44 +81,73 @@ namespace eosiosystem {
       }
    }
 
+   //bp 보상 요청 
    void system_contract::claimrewards( const name& owner ) {
       require_auth( owner );
 
       const auto& prod = _producers.get( owner.value );
       check( prod.active(), "producer does not have an active key" );
-
+      
+      //15% 이상 투표된 상태에서 보상 받을수 있음
       check( _gstate.total_activated_stake >= min_activated_stake,
                     "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       const auto ct = current_time_point();
-
+      
+      //하루에 보상 신청은 한번만 가능함 
       check( ct - prod.last_claim_time > microseconds(useconds_per_day), "already claimed rewards within past day" );
 
       const asset token_supply   = token::get_supply(token_account, core_symbol().code() );
       const auto usecs_since_last_fill = (ct - _gstate.last_pervote_bucket_fill).count();
-
+      
+      
+      //새로운 토큰이 얼마 발행할지 결정과 토큰을 임시 저장하는 계정으로 토큰 전송 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > time_point() ) {
+         //새로운 토큰 
+         //continuous_rate       = 0.04879;  
+         //1년 보상 = rate * 총발행량 * 지난 시간 / 1년 시간 
          auto new_tokens = static_cast<int64_t>( (continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year) );
 
+         //inflation_pay_factor  = 5;                // 20% of the inflation // 
          auto to_producers     = new_tokens / inflation_pay_factor;
+         
+         // 워커프로포잘 펀드(Worker Proposal Fund)에 80%  // BP보상:WP보상 = 1(20%):4(80%) 비율 
          auto to_savings       = new_tokens - to_producers;
+         
+         // votepay_factor        = 4;                // 25% of the producer pay
+         //이름이 votepay_factor이지만 25%는 블록생성 보상 
          auto to_per_block_pay = to_producers / votepay_factor;
+         
+         //75%가 투표에대한 비율 보상 <-- 이것도 역시 BP가 받는 보상임, 투표자가 받는 보상이 아님 
          auto to_per_vote_pay  = to_producers - to_per_block_pay;
          {
+            //토큰 발행
             token::issue_action issue_act{ token_account, { {get_self(), active_permission} } };
             issue_act.send( get_self(), asset(new_tokens, core_symbol()), "issue tokens for producer pay and savings" );
          }
          {
+            //토큰 전송
             token::transfer_action transfer_act{ token_account, { {get_self(), active_permission} } };
+            
+            //saving_account WP Fund 저장
             transfer_act.send( get_self(), saving_account, asset(to_savings, core_symbol()), "unallocated inflation" );
+            
+            //BP 보상 저장 계정
             transfer_act.send( get_self(), bpay_account, asset(to_per_block_pay, core_symbol()), "fund per-block bucket" );
+            
+            //투표 보상 저장 계정 
             transfer_act.send( get_self(), vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" );
          }
 
          _gstate.pervote_bucket          += to_per_vote_pay;
          _gstate.perblock_bucket         += to_per_block_pay;
+         
+         //현재 시간으로 변경 
          _gstate.last_pervote_bucket_fill = ct;
       }
+      
+      
+      //
 
       auto prod2 = _producers2.find( owner.value );
 
