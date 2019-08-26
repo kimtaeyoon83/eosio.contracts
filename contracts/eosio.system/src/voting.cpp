@@ -20,8 +20,11 @@ namespace eosiosystem {
    using eosio::microseconds;
    using eosio::singleton;
 
+   //location 값 확인 필요
    void system_contract::regproducer( const name& producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) {
       check( url.size() < 512, "url too long" );
+      
+      //??
       check( producer_key != eosio::public_key(), "public key should not be the default value" );
       require_auth( producer );
 
@@ -34,6 +37,7 @@ namespace eosiosystem {
             info.is_active    = true;
             info.url          = url;
             info.location     = location;
+            //같을수가 있나
             if ( info.last_claim_time == time_point() )
                info.last_claim_time = ct;
          });
@@ -44,6 +48,8 @@ namespace eosiosystem {
                info.owner                     = producer;
                info.last_votepay_share_update = ct;
             });
+            
+            //
             update_total_votepay_share( ct, 0.0, prod->total_votes );
             // When introducing the producer2 table row for the first time, the producer's votes must also be accounted for in the global total_producer_votepay_share at the same time.
          }
@@ -70,27 +76,34 @@ namespace eosiosystem {
 
       const auto& prod = _producers.get( producer.value, "producer not found" );
       _producers.modify( prod, same_payer, [&]( producer_info& info ){
+         //deactivate = {producer_key = public_key(); is_active = false; }
          info.deactivate();
       });
    }
 
    void system_contract::update_elected_producers( const block_timestamp& block_time ) {
       _gstate.last_producer_schedule_update = block_time;
-
+      
+      //double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
+      //active 상태의 bp를 total_votes값으로 높은수로 정렬됨
+      //cleos -u http://jungle2.cryptolions.io:80 get table eosio eosio producers --index 2 --key-type float64
       auto idx = _producers.get_index<"prototalvote"_n>();
 
       std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
+      //21개의 bp 공간 예약?
       top_producers.reserve(21);
-
+      
+      //total_votes 21개 높은 순위 & 활성화 상태 
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
+      //이전 bp 사이즈보다 작음면 
       if ( top_producers.size() == 0 || top_producers.size() < _gstate.last_producer_schedule_size ) {
          return;
       }
 
-      /// sort by producer name
+      /// sort by producer name <-- 램덤 소팅이 아닌 매번 이름 으로 정렬된 (항상 같은 순서)
       std::sort( top_producers.begin(), top_producers.end() );
 
       std::vector<eosio::producer_key> producers;
