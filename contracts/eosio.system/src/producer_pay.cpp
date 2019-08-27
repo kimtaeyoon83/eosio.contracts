@@ -10,7 +10,7 @@ namespace eosiosystem {
    
    //https://github.com/EOSIO/eos/blob/eb88d033c0abbc481b8a481485ef4218cdaa033a/libraries/chain/controller.cpp
    //node에서 블록 서명시 이벤트 발생 
-   //ignore항목 확인 필요 - 대략적으로 구조 일치 여부 확인하지 않는다는 말 같음
+   //ignore항목 확인 필요 - 대략적으로 파라미터 구조 일치 여부 확인하지 않는다는 말 같음
    void system_contract::onblock( ignore<block_header> ) {
       using namespace eosio;
 
@@ -96,12 +96,17 @@ namespace eosiosystem {
       
       //하루에 보상 신청은 한번만 가능함 
       check( ct - prod.last_claim_time > microseconds(useconds_per_day), "already claimed rewards within past day" );
-
+      
+      //현재 토큰 발행량
       const asset token_supply   = token::get_supply(token_account, core_symbol().code() );
+      
+      //현재 시간 - 이전 bucket 충전 시간 = 차이시간 카운트 ??
       const auto usecs_since_last_fill = (ct - _gstate.last_pervote_bucket_fill).count();
       
       
       //새로운 토큰이 얼마 발행할지 결정과 토큰을 임시 저장하는 계정으로 토큰 전송 
+      //이전 bucket 충전 시간과 현재 시간이 차이가 있고, 현재 시간보다  time_point???
+      //https://github.com/EOSIO/eosio.cdt/blob/master/libraries/eosiolib/time.hpp
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > time_point() ) {
          //새로운 토큰 
          //continuous_rate       = 0.04879;  
@@ -151,10 +156,12 @@ namespace eosiosystem {
 
       auto prod2 = _producers2.find( owner.value );
 
-      /// New metric to be used in pervote pay calculation. Instead of vote weight ratio, we combine vote weight and
-      /// time duration the vote weight has been held into one metric.
+      /// New metric to be used in pervote pay calculation. Instead of vote weight ratio, we combine vote weight and time duration the vote weight has been held into one metric.
+      /// pervote pay 계산에 사용될 새로운 지표. 투표 가중치 비율 대신 투표 가중치와 투표 가중치가 하나의 메트릭으로 유지 된 기간을 결합합니다.
+      // 마지막 리워드 시간의 + 3일 동안 시간값
       const auto last_claim_plus_3days = prod.last_claim_time + microseconds(3 * useconds_per_day);
 
+      //현재 시간보다 작거나 같으면 true
       bool crossed_threshold       = (last_claim_plus_3days <= ct);
       bool updated_after_threshold = true;
       if ( prod2 != _producers2.end() ) {
@@ -183,6 +190,7 @@ namespace eosiosystem {
                                  );
 
       int64_t producer_per_vote_pay = 0;
+      //0
       if( _gstate2.revision > 0 ) {
          double total_votepay_share = update_total_votepay_share( ct );
          if( total_votepay_share > 0 && !crossed_threshold ) {
