@@ -24,11 +24,12 @@ namespace eosiosystem {
    void system_contract::regproducer( const name& producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) {
       check( url.size() < 512, "url too long" );
       
-      //??
+      //공개키가 공백 여부 확인 
       check( producer_key != eosio::public_key(), "public key should not be the default value" );
       require_auth( producer );
 
       auto prod = _producers.find( producer.value );
+      //현재 시점 time_point 유형을 가져옵니다. 
       const auto ct = current_time_point();
 
       if ( prod != _producers.end() ) {
@@ -37,19 +38,20 @@ namespace eosiosystem {
             info.is_active    = true;
             info.url          = url;
             info.location     = location;
-            //같을수가 있나
+            //마지막 보상 시간과 현재 시간이 같을 수 있나??
             if ( info.last_claim_time == time_point() )
                info.last_claim_time = ct;
          });
 
          auto prod2 = _producers2.find( producer.value );
          if ( prod2 == _producers2.end() ) {
+            //데어터가 없는 경우 생성 , producers2의 테이블은 나중에 추가된 테이블
             _producers2.emplace( producer, [&]( producer_info2& info ){
                info.owner                     = producer;
                info.last_votepay_share_update = ct;
             });
             
-            //
+            //총 투표 지불 공유 업데이트 
             update_total_votepay_share( ct, 0.0, prod->total_votes );
             // When introducing the producer2 table row for the first time, the producer's votes must also be accounted for in the global total_producer_votepay_share at the same time.
          }
@@ -111,7 +113,8 @@ namespace eosiosystem {
       producers.reserve(top_producers.size());
       for( const auto& item : top_producers )
          producers.push_back(item.first);
-
+      
+      //https://github.com/EOSIO/eos/blob/eb88d033c0abbc481b8a481485ef4218cdaa033a/libraries/chain/controller.cpp
       if( set_proposed_producers( producers ) >= 0 ) {
          _gstate.last_producer_schedule_size = static_cast<decltype(_gstate.last_producer_schedule_size)>( top_producers.size() );
       }
@@ -151,6 +154,7 @@ namespace eosiosystem {
       return _gstate2.total_producer_votepay_share;
    }
 
+   //업데이트 생산자 투표 지불 공유 
    double system_contract::update_producer_votepay_share( const producers_table2::const_iterator& prod_itr,
                                                           const time_point& ct,
                                                           double shares_rate,
