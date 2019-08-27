@@ -180,7 +180,9 @@ namespace eosiosystem {
 
    void system_contract::voteproducer( const name& voter_name, const name& proxy, const std::vector<name>& producers ) {
       require_auth( voter_name );
+      //registration<&system_contract::update_rex_stake> vote_stake_updater{ this };
       vote_stake_updater( voter_name );
+      
       update_votes( voter_name, proxy, producers, true );
       auto rex_itr = _rexbalance.find( voter_name.value );
       if( rex_itr != _rexbalance.end() && rex_itr->rex_balance.amount > 0 ) {
@@ -191,9 +193,11 @@ namespace eosiosystem {
    void system_contract::update_votes( const name& voter_name, const name& proxy, const std::vector<name>& producers, bool voting ) {
       //validate input
       if ( proxy ) {
+         //producers와 proxy는 동일할 수 없음 
          check( producers.size() == 0, "cannot vote for producers and proxy at same time" );
          check( voter_name != proxy, "cannot proxy to self" );
       } else {
+         //최대 30개 bp까지 투표가능 
          check( producers.size() <= 30, "attempt to vote for too many producers" );
          for( size_t i = 1; i < producers.size(); ++i ) {
             check( producers[i-1] < producers[i], "producer votes must be unique and sorted" );
@@ -201,6 +205,7 @@ namespace eosiosystem {
       }
 
       auto voter = _voters.find( voter_name.value );
+      //
       check( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
       check( !proxy || !voter->is_proxy, "account registered as a proxy is not allowed to use a proxy" );
 
