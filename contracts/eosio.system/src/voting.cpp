@@ -75,7 +75,7 @@ namespace eosiosystem {
 
    void system_contract::unregprod( const name& producer ) {
       require_auth( producer );
-
+       //bp 정보는 삭제하지 않고 비활성화 상태로 변경 
       const auto& prod = _producers.get( producer.value, "producer not found" );
       _producers.modify( prod, same_payer, [&]( producer_info& info ){
          //deactivate = {producer_key = public_key(); is_active = false; }
@@ -84,6 +84,7 @@ namespace eosiosystem {
    }
 
    void system_contract::update_elected_producers( const block_timestamp& block_time ) {
+      //글로벌 상태 변수에 파라미터 블록 시간 할당 : 마지막으로 블록 업데이트 시간 계획
       _gstate.last_producer_schedule_update = block_time;
       
       //double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
@@ -205,7 +206,8 @@ namespace eosiosystem {
       }
 
       auto voter = _voters.find( voter_name.value );
-      //
+      
+      //setacctram : Set account RAM limits action 요청시 데이터가 생성됨 
       check( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
       check( !proxy || !voter->is_proxy, "account registered as a proxy is not allowed to use a proxy" );
 
@@ -214,13 +216,15 @@ namespace eosiosystem {
        * after total_activated_stake hits threshold, we can use last_vote_weight to determine that this is
        * their first vote and should consider their stake activated.
        */
+      //투표가 처음인 계정은 총활성화 stake량에 투표자의 stake량을 더함
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
          if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == time_point() ) {
             _gstate.thresh_activated_stake_time = current_time_point();
          }
       }
-
+      
+      //weight를 변화함 
       auto new_vote_weight = stake2vote( voter->staked );
       if( voter->is_proxy ) {
          new_vote_weight += voter->proxied_vote_weight;
@@ -229,6 +233,7 @@ namespace eosiosystem {
       std::map<name, std::pair<double, bool /*new*/> > producer_deltas;
       if ( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
+            //d
             auto old_proxy = _voters.find( voter->proxy.value );
             check( old_proxy != _voters.end(), "old proxy not found" ); //data corruption
             _voters.modify( old_proxy, same_payer, [&]( auto& vp ) {
