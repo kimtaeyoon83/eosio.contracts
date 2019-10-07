@@ -233,7 +233,7 @@ namespace eosiosystem {
       std::map<name, std::pair<double, bool /*new*/> > producer_deltas;
       if ( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
-            //d
+            //이전 proxy 대상자에게 준 vote_weight 회수( 빼기함), proxied_vote_weight값이 proxy 대상자의 vote_weight값임
             auto old_proxy = _voters.find( voter->proxy.value );
             check( old_proxy != _voters.end(), "old proxy not found" ); //data corruption
             _voters.modify( old_proxy, same_payer, [&]( auto& vp ) {
@@ -252,8 +252,10 @@ namespace eosiosystem {
       if( proxy ) {
          auto new_proxy = _voters.find( proxy.value );
          check( new_proxy != _voters.end(), "invalid proxy specified" ); //if ( !voting ) { data corruption } else { wrong vote }
+         //is_proxy값이 true인 대상자에게만 proxy voting이 가능함
          check( !voting || new_proxy->is_proxy, "proxy not found" );
          if ( new_vote_weight >= 0 ) {
+            //proxied_vote_weight에 vote_weight 더함
             _voters.modify( new_proxy, same_payer, [&]( auto& vp ) {
                   vp.proxied_vote_weight += new_vote_weight;
                });
