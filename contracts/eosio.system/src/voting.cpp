@@ -277,11 +277,14 @@ namespace eosiosystem {
       double delta_change_rate         = 0.0;
       double total_inactive_vpay_share = 0.0;
       for( const auto& pd : producer_deltas ) {
+         //map에서 first = key, second = value
          auto pitr = _producers.find( pd.first.value );
          if( pitr != _producers.end() ) {
+            //비활성화된 bp에게는 투표가 안됨
             if( voting && !pitr->active() && pd.second.second /* from new set */ ) {
                check( false, ( "producer " + pitr->owner.to_string() + " is not currently registered" ).data() );
             }
+            //bp total_votes에 vote weight 추가(-, +)
             double init_total_votes = pitr->total_votes;
             _producers.modify( pitr, same_payer, [&]( auto& p ) {
                p.total_votes += pd.second.first;
