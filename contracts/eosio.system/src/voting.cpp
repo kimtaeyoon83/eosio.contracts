@@ -241,6 +241,7 @@ namespace eosiosystem {
                });
             propagate_weight_change( *old_proxy );
          } else {
+            //기존에 투표했던 bp에서 이전 투표 weight(last_vote_weight)값 빼기 
             for( const auto& p : voter->producers ) {
                auto& d = producer_deltas[p];
                d.first -= voter->last_vote_weight;
@@ -263,6 +264,7 @@ namespace eosiosystem {
          }
       } else {
          if( new_vote_weight >= 0 ) {
+            //새로 투표된 bp에 신규 투표 weight(new_vote_weight)값 더함
             for( const auto& p : producers ) {
                auto& d = producer_deltas[p];
                d.first += new_vote_weight;
